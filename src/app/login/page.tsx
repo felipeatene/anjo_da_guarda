@@ -37,15 +37,17 @@ export default function LoginPage() {
 
       const supabase = getSupabase();
       if (mode === "signup") {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: name } },
         });
         if (signUpError) throw signUpError;
-        // O Token Pessoal é provisionado automaticamente no cadastro
-        // (trigger no banco) e fica disponível no painel, na aba "Meu Token".
-        router.push("/dashboard");
+        if (data.session) {
+          router.push("/dashboard");
+        } else {
+          setNotice("Conta criada! Confirme seu e-mail para acessar o painel.");
+        }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;

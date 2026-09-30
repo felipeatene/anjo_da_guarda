@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseServer } from "@/lib/supabase-server";
+import { hashPersonalToken } from "@/lib/token-server";
 
 /**
  * POST /api/ingest
@@ -36,10 +38,37 @@ export async function POST(request: NextRequest) {
       : null;
 
   const token = bearerToken ?? bodyToken;
-  if (!token || !token.startsWith("adg_")) {
+  if (!token || !/^adg_[0-9a-f]{48}$/.test(token)) {
     return NextResponse.json({ error: "Token pessoal ausente ou inválido." }, { status: 401 });
   }
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("tipo" in body) ||
+    typeof body.tipo !== "string" ||
+    !body.tipo ||
+    !("valor" in body) ||
+    typeof body.valor !== "number" ||
+    !Number.isFinite(body.valor) ||
+    !("capturado_em" in body) ||
+    typeof body.capturado_em !== "string" ||
+    Number.isNaN(Date.parse(body.capturado_em))
+  ) {
+    return NextResponse.json({ error: "Payload de evento inválido." }, { status: 400 });
+  }
 
-  // A validação do token e a persistência no Supabase entram aqui.
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const supabase = await getSupabaseServer();
+    const { data: tokenRecord } = await supabase
+      .from("personal_tokens")
+      .select("user_id")
+      .eq("token_hash", await hashPersonalToken(token))
+      .eq("active", true)
+      .maybeSingle();
+    if (!tokenRecord) return NextResponse.json({ error: "Token pessoal inválido." }, { status: 401 });
+  } else {
+    return NextResponse.json({ error: "Autenticação não configurada." }, { status: 503 });
+  }
+
   return NextResponse.json({ received: true }, { status: 202 });
 }

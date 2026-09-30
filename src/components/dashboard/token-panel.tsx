@@ -1,18 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Copy, Eye, EyeOff, KeyRound, RefreshCw } from "lucide-react";
-import { generatePersonalToken } from "@/lib/token";
 import { Button } from "@/components/ui";
 
 const ingestUrl = "/api/ingest";
 
 export function TokenPanel() {
-  // Em produção: buscar o token do usuário autenticado via /api/token (GET)
-  // ou provisionar via POST na primeira visita ao painel.
-  const [token, setToken] = useState<string | null>(() => generatePersonalToken());
+  const [token, setToken] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const storedToken = window.localStorage.getItem("adg-personal-token");
+    if (storedToken) {
+      queueMicrotask(() => setToken(storedToken));
+      return;
+    }
+    void fetch("/api/token", { method: "POST" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("token provisioning failed");
+        const data = (await response.json()) as { token: string };
+        window.localStorage.setItem("adg-personal-token", data.token);
+        setToken(data.token);
+      })
+      .catch(() => setToken(null));
+  }, []);
 
   async function copyToken() {
     if (!token) return;
@@ -26,9 +39,15 @@ export function TokenPanel() {
   }
 
   function regenerate() {
-    // Em produção: POST /api/token — invalida o anterior e persiste o novo.
-    setToken(generatePersonalToken());
-    setCopied(false);
+    void fetch("/api/token", { method: "POST" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("token provisioning failed");
+        const data = (await response.json()) as { token: string };
+        window.localStorage.setItem("adg-personal-token", data.token);
+        setToken(data.token);
+        setCopied(false);
+      })
+      .catch(() => setCopied(false));
   }
 
   const masked = token ? `${token.slice(0, 8)}${"•".repeat(24)}${token.slice(-4)}` : "";

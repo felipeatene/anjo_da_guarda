@@ -87,11 +87,21 @@ function SceneContent({ scene }: { scene: (typeof scenes)[number] }) {
 
 export function PhoneMockup() {
   const [active, setActive] = useState(0);
+  const [autoplay, setAutoplay] = useState(true);
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotion = () => setAutoplay(!mediaQuery.matches);
+    updateMotion();
+    mediaQuery.addEventListener("change", updateMotion);
+    return () => mediaQuery.removeEventListener("change", updateMotion);
+  }, []);
+
+  useEffect(() => {
+    if (!autoplay) return;
     const timer = setInterval(() => setActive((i) => (i + 1) % scenes.length), SCENE_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [autoplay]);
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -137,7 +147,10 @@ export function PhoneMockup() {
           return (
             <button
               key={scene.id}
-              onClick={() => setActive(i)}
+              onClick={() => {
+                setActive(i);
+                setAutoplay(false);
+              }}
               aria-pressed={i === active}
               className={cn(
                 "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-300",

@@ -37,7 +37,7 @@ export default function DashboardPage() {
             Meu <span className="text-gradient">Anjo da Guarda</span>
           </h1>
           <p className="text-sm text-mist-300">
-            Terça-feira, 30 de setembro · dados integrados do seu celular e relógio inteligente
+            Quarta-feira, 30 de setembro · dados integrados do seu celular e relógio inteligente
           </p>
         </div>
 
